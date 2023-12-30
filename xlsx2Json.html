@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Excel to JSON</title>
+    <style>
+        #excel-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        #excel-table th,
+        #excel-table td {
+            border: 1px solid #dddddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        #excel-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #excel-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #worksheet-list {
+            margin-top: 20px;
+        }
+
+        #worksheet-list button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <input type="file" id="data" accept=".xlsx" />
+    <div id="worksheet-list"></div>
+    <table id="excel-table"></table>
+
+    <script>
+        var binaryString;
+
+        document.querySelector('input').addEventListener('change', function () {
+            var reader = new FileReader();
+            reader.onload = function () {
+                var arrayBuffer = this.result,
+                    array = new Uint8Array(arrayBuffer);
+                binaryString = String.fromCharCode.apply(null, array);
+                var workbook = XLSX.read(binaryString, { type: "binary" });
+
+                var worksheetList = document.getElementById('worksheet-list');
+                worksheetList.innerHTML = "<b>Worksheets:</b>";
+                workbook.SheetNames.forEach(function (sheetName) {
+                    worksheetList.innerHTML += `<button onclick="displaySheet('${sheetName}')">${sheetName}</button>`;
+                });
+
+                displaySheet(workbook.SheetNames[0]);
+            }
+            reader.readAsArrayBuffer(this.files[0]);
+        });
+
+        function displaySheet(sheetName) {
+            var workbook = XLSX.read(binaryString, { type: "binary" });
+            var worksheet = workbook.Sheets[sheetName];
+            var excelTable = document.getElementById('excel-table');
+            excelTable.innerHTML = "";
+
+            //var tableData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+			var tableData = XLSX.utils.sheet_to_json(worksheet, {
+			    header: 1,
+			    raw: true,
+			    defval: "" // Set defval to an empty string for blank cells
+			});
+
+            var headerRow = excelTable.insertRow(0);
+            tableData[0].forEach(function (cellData) {
+                var headerCell = headerRow.insertCell(-1);
+                headerCell.textContent = cellData;
+            });
+
+            for (var i = 1; i < tableData.length; i++) {
+                var row = excelTable.insertRow(-1);
+                tableData[i].forEach(function (cellData) {
+                    var cell = row.insertCell(-1);
+                    cell.textContent = cellData;
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
