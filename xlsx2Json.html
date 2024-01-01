@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Excel to JSON</title>
+    <title>Excel to JSON Demo</title>
     <style>
         #excel-table {
             border-collapse: collapse;
@@ -31,23 +31,54 @@
         }
 
         #worksheet-list button {
-            background-color: #4CAF50;
+			border-radius: 5px;
+            background-color: #808080;
             color: white;
-            padding: 10px;
+            padding: 5px;
             margin: 5px;
             cursor: pointer;
+        }
+
+        #worksheet-list button.current-sheet {
+            background-color: #4CAF50;
+        }
+		#upload-div {
+            display: inline-block;
+		}
+		#upload-button {
+			border-radius: 5px;
+            display: none;
+            margin-top: 5px;
+            background-color: black;
+            color: white;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        #upload-banner {
+            display: none;
+            margin-top: 2px;
+            padding: 2px;
+            background-color: lightgray;
+            color: white;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
-    <input type="file" id="data" accept=".xlsx" />
+    <input type="file" id="data" accept=".xlsx" /><br>
+    <div id="upload-div"><table><tr><td><button id="upload-button" onclick="uploadJson()">Upload</button></td><td>
+	<div id="upload-banner"></div></td></tr></table>
+	</div>
     <div id="worksheet-list"></div>
     <table id="excel-table"></table>
 
     <script>
         var binaryString;
+        var currentSheet;
+        var uploadButton = document.getElementById('upload-button');
+        var uploadBanner = document.getElementById('upload-banner');
 
         document.querySelector('input').addEventListener('change', function () {
             var reader = new FileReader();
@@ -58,28 +89,30 @@
                 var workbook = XLSX.read(binaryString, { type: "binary" });
 
                 var worksheetList = document.getElementById('worksheet-list');
-                worksheetList.innerHTML = "<b>Worksheets:</b>";
+                worksheetList.innerHTML = "";
                 workbook.SheetNames.forEach(function (sheetName) {
-                    worksheetList.innerHTML += `<button onclick="displaySheet('${sheetName}')">${sheetName}</button>`;
+                    var buttonClass = (sheetName === currentSheet) ? 'current-sheet' : '';
+                    worksheetList.innerHTML += `<button class="${buttonClass}" onclick="displaySheet('${sheetName}')">${sheetName}</button>`;
                 });
 
                 displaySheet(workbook.SheetNames[0]);
+				uploadButton.style.display = 'block';
             }
             reader.readAsArrayBuffer(this.files[0]);
         });
 
         function displaySheet(sheetName) {
+            currentSheet = sheetName;
             var workbook = XLSX.read(binaryString, { type: "binary" });
             var worksheet = workbook.Sheets[sheetName];
             var excelTable = document.getElementById('excel-table');
             excelTable.innerHTML = "";
 
-            //var tableData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-			var tableData = XLSX.utils.sheet_to_json(worksheet, {
-			    header: 1,
-			    raw: true,
-			    defval: "" // Set defval to an empty string for blank cells
-			});
+            var tableData = XLSX.utils.sheet_to_json(worksheet, {
+                header: 1,
+                raw: true,
+                defval: ""
+            });
 
             var headerRow = excelTable.insertRow(0);
             tableData[0].forEach(function (cellData) {
@@ -94,7 +127,100 @@
                     cell.textContent = cellData;
                 });
             }
+
+            var worksheetList = document.getElementById('worksheet-list');
+            worksheetList.innerHTML = "";
+            workbook.SheetNames.forEach(function (sheet) {
+                var buttonClass = (sheet === currentSheet) ? 'current-sheet' : '';
+                worksheetList.innerHTML += `<button class="${buttonClass}" onclick="displaySheet('${sheet}')">${sheet}</button>`;
+            });
+			uploadBanner.style.display = 'none';
         }
+
+        function uploadJson1() {
+            var workbook = XLSX.read(binaryString, { type: "binary" });
+            var worksheet = workbook.Sheets[currentSheet];
+            var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+
+            var headers = jsonData[0];
+
+            var finalJsonData = jsonData.slice(1).map(function (row) {
+                var rowData = {};
+                headers.forEach(function (header, index) {
+                    rowData[header] = row[index];
+                });
+                return rowData;
+            });
+
+            console.log("JSON Data for current sheet:", finalJsonData);
+        }
+		
+		function uploadJson() {
+		    var workbook = XLSX.read(binaryString, { type: "binary" });
+		    var worksheet = workbook.Sheets[currentSheet];
+		    var tableData = XLSX.utils.sheet_to_json(worksheet, {
+		        header: 1,
+		        raw: true,
+		        defval: "" // Set defval to an empty string for blank cells
+		    });
+
+		    // Add rowNumber to each record
+		    tableData = tableData.map(function (record, index) {
+		        record.rowNumber = index + 1;
+		        return record;
+		    });
+
+		    // Chunk the array into batches of 100 records
+		    var batchSize = 100;
+		    var batches = [];
+		    for (var i = 0; i < tableData.length; i += batchSize) {
+		        var batch = tableData.slice(i, i + batchSize);
+		        batches.push(batch);
+		    }
+
+		    // Generate a unique ID using uuid
+		    var uniqueId = uuidv4();
+			var totalRecords = 0;
+			
+
+		    // Iterate through batches and make API calls
+		    batches.forEach(function (batch, index) {
+		        var payload = {
+		            id: uniqueId,
+		            fileName: document.querySelector('input').files[0].name,
+		            sheetName: currentSheet,
+		            batchNumber: index + 1,
+		            data: batch
+		        };
+
+		        // Assuming you have a function to make the API call, replace the following line with your API call
+		        // makeApiCall('/data-upload', 'POST', payload);
+
+		        // Log payload to console for demonstration
+		        console.log("API Payload:", payload);
+				totalRecords += batch.length;
+		    });
+
+            uploadBanner.innerHTML = `Upload Ref: ${uniqueId} - Total Records: ${totalRecords}`;
+            uploadBanner.style.display = 'block';
+			
+		    // Utility function to generate a UUID (v4)
+		    function uuidv4() {
+		        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+		            var r = Math.random() * 16 | 0,
+		                v = c == 'x' ? r : (r & 0x3 | 0x8);
+		            return v.toString(16);
+		        });
+		    }
+
+		    // Assuming you have a function to make the API call, you can define it as follows
+		    // function makeApiCall(url, method, payload) {
+		    //     // Implement your API call logic here
+		    // }
+		}
+
+
+
     </script>
 </body>
 
