@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Excel to JSON Demo</title>
     <style>
@@ -137,53 +136,28 @@
 			uploadBanner.style.display = 'none';
         }
 
-        function uploadJson1() {
-            var workbook = XLSX.read(binaryString, { type: "binary" });
-            var worksheet = workbook.Sheets[currentSheet];
-            var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-
-            var headers = jsonData[0];
-
-            var finalJsonData = jsonData.slice(1).map(function (row) {
-                var rowData = {};
-                headers.forEach(function (header, index) {
-                    rowData[header] = row[index];
-                });
-                return rowData;
-            });
-
-            console.log("JSON Data for current sheet:", finalJsonData);
-        }
-		
 		function uploadJson() {
 		    var workbook = XLSX.read(binaryString, { type: "binary" });
 		    var worksheet = workbook.Sheets[currentSheet];
 		    var tableData = XLSX.utils.sheet_to_json(worksheet, {
 		        header: 1,
 		        raw: true,
-		        defval: "" // Set defval to an empty string for blank cells
+		        defval: ""
 		    });
 
-		    // Add rowNumber to each record
 		    tableData = tableData.map(function (record, index) {
 		        record.rowNumber = index + 1;
 		        return record;
 		    });
 
-		    // Chunk the array into batches of 100 records
 		    var batchSize = 100;
 		    var batches = [];
 		    for (var i = 0; i < tableData.length; i += batchSize) {
 		        var batch = tableData.slice(i, i + batchSize);
 		        batches.push(batch);
 		    }
-
-		    // Generate a unique ID using uuid
 		    var uniqueId = uuidv4();
 			var totalRecords = 0;
-			
-
-		    // Iterate through batches and make API calls
 		    batches.forEach(function (batch, index) {
 		        var payload = {
 		            id: uniqueId,
@@ -192,11 +166,8 @@
 		            batchNumber: index + 1,
 		            data: batch
 		        };
-
-		        // Assuming you have a function to make the API call, replace the following line with your API call
 		        // makeApiCall('/data-upload', 'POST', payload);
-
-		        // Log payload to console for demonstration
+				
 		        console.log("API Payload:", payload);
 				totalRecords += batch.length;
 		    });
@@ -204,7 +175,6 @@
             uploadBanner.innerHTML = `Upload Ref: ${uniqueId} - Total Records: ${totalRecords}`;
             uploadBanner.style.display = 'block';
 			
-		    // Utility function to generate a UUID (v4)
 		    function uuidv4() {
 		        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
 		            var r = Math.random() * 16 | 0,
@@ -213,15 +183,10 @@
 		        });
 		    }
 
-		    // Assuming you have a function to make the API call, you can define it as follows
 		    // function makeApiCall(url, method, payload) {
-		    //     // Implement your API call logic here
+		    //   call back-end API here 
 		    // }
 		}
-
-
-
     </script>
 </body>
-
 </html>
